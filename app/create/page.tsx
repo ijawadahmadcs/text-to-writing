@@ -17,7 +17,8 @@ import {
   Download,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  Plus
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { jsPDF } from 'jspdf';
@@ -40,46 +41,93 @@ const TEMPLATES: PaperTemplate[] = [
   { 
     id: 'lined', 
     name: 'Lined Notebook', 
-    thumbnail: 'https://picsum.photos/seed/lined/200/300',
+    thumbnail: '/templates/lined.png',
     bgClass: 'bg-white',
-    lineColor: 'rgba(0, 100, 255, 0.1)',
+    lineColor: 'rgba(180, 210, 240, 0.6)',
     hasLines: true,
-    lineSpacing: 30
+    lineSpacing: 88
   },
   { 
     id: 'blank', 
     name: 'Blank Paper', 
-    thumbnail: 'https://picsum.photos/seed/blank/200/300',
+    thumbnail: '/templates/blank.png',
     bgClass: 'bg-white',
     lineColor: 'transparent',
     hasLines: false,
     lineSpacing: 0
   },
   { 
-    id: 'grid', 
-    name: 'Grid Paper', 
-    thumbnail: 'https://picsum.photos/seed/grid/200/300',
-    bgClass: 'bg-white',
-    lineColor: 'rgba(0, 0, 0, 0.05)',
-    hasLines: true, // We'll handle grid differently in rendering
-    lineSpacing: 25
-  },
-  { 
     id: 'exam', 
     name: 'Exam Sheet', 
-    thumbnail: 'https://picsum.photos/seed/exam/200/300',
+    thumbnail: '/templates/exam.png',
     bgClass: 'bg-stone-50',
-    lineColor: 'rgba(255, 0, 0, 0.1)',
+    lineColor: 'rgba(190, 190, 190, 0.5)',
     hasLines: true,
-    lineSpacing: 35
+    lineSpacing: 88
+  },
+  { 
+    id: 'grid', 
+    name: 'Grid Paper', 
+    thumbnail: '/templates/grid.png',
+    bgClass: 'bg-white',
+    lineColor: 'rgba(200, 220, 240, 0.4)',
+    hasLines: true,
+    lineSpacing: 62
+  },
+  { 
+    id: 'dotted', 
+    name: 'Dot Grid', 
+    thumbnail: '/templates/dotted.png',
+    bgClass: 'bg-white',
+    lineColor: 'rgba(180, 190, 200, 0.3)',
+    hasLines: false,
+    lineSpacing: 62
   }
 ];
 
 const HANDWRITING_FONTS = [
-  { name: 'Casual', family: "'Dancing Script', cursive" },
-  { name: 'Neat', family: "'Indie Flower', cursive" },
-  { name: 'Cursive', family: "'Great Vibes', cursive" },
-  { name: 'Architect', family: "'Architects Daughter', cursive" }
+  { name: 'Dancing Script', family: "'Dancing Script', cursive", index: 0, preview: null },
+  { name: 'Indie Flower', family: "'Indie Flower', cursive", index: 1, preview: null },
+  { name: 'Caveat', family: "'Caveat', cursive", index: 2, preview: null },
+  { name: 'Architects Daughter', family: "'Architects Daughter', cursive", index: 3, preview: null },
+  { name: 'Antony Lark', family: 'QEAntonyLark', index: 4, preview: '/fonts/QEAntonyLark_preview.png' },
+  { name: 'Beverly Smith', family: 'QEBEV', index: 5, preview: '/fonts/QEBEV_preview.png' },
+  { name: 'Braden Hill', family: 'QEBradenHill', index: 6, preview: '/fonts/QEBradenHill_preview.png' },
+  { name: 'Caroline Mutiboko', family: 'QECarolineMutiboko', index: 7, preview: '/fonts/QECarolineMutiboko_preview.png' },
+  { name: 'Harriet DeLaughter (Cursive)', family: 'QECursiveVersion', index: 8, preview: '/fonts/QECursiveVersion_preview.png' },
+  { name: 'David Mergens', family: 'QEDaveMergens', index: 9, preview: '/fonts/QEDaveMergens_preview.png' },
+  { name: 'David Reid', family: 'QEDavidReid', index: 10, preview: '/fonts/QEDavidReid_preview.png' },
+  { name: 'David Reid (Print)', family: 'QEDavidReidCAP', index: 11, preview: '/fonts/QEDavidReidCAP_preview.png' },
+  { name: 'Donald Ross', family: 'QEDonaldRoss', index: 12, preview: '/fonts/QEDonaldRoss_preview.png' },
+  { name: 'DS Font', family: 'QEDSFont', index: 13, preview: '/fonts/QEDSFont_preview.png' },
+  { name: 'Garrett Moretz', family: 'QEGarrettWMoretz', index: 14, preview: '/fonts/QEGarrettWMoretz_preview.png' },
+  { name: 'geeKzoid', family: 'QEgeeKzoid', index: 15, preview: '/fonts/QEgeeKzoid_preview.png' },
+  { name: 'George Hughes', family: 'QEGHHughes', index: 16, preview: '/fonts/QEGHHughes_preview.png' },
+  { name: 'Herbert Cooper', family: 'QEHerbertCooper', index: 17, preview: '/fonts/QEHerbertCooper_preview.png' },
+  { name: 'Jeff Dungan', family: 'QEJeffDungan', index: 18, preview: '/fonts/QEJeffDungan_preview.png' },
+  { name: 'Kate Rothrock', family: 'QEJER', index: 19, preview: '/fonts/QEJER_preview.png' },
+  { name: 'John Caplin', family: 'QEJohnCaplin', index: 20, preview: '/fonts/QEJohnCaplin_preview.png' },
+  { name: 'John Williams', family: 'QEJohnWilliams', index: 21, preview: '/fonts/QEJohnWilliams_preview.png' },
+  { name: 'Julian Dean', family: 'QEJulianDean', index: 22, preview: '/fonts/QEJulianDean_preview.png' },
+  { name: 'Kevin Knowles', family: 'QEKevinKnowles', index: 23, preview: '/fonts/QEKevinKnowles_preview.png' },
+  { name: 'Kevin Shirley', family: 'QEKevinShirley', index: 24, preview: '/fonts/QEKevinShirley_preview.png' },
+  { name: 'Kunjar Bhaduri', family: 'QEKunjarScript', index: 25, preview: '/fonts/QEKunjarScript_preview.png' },
+  { name: 'Mamas and Papas', family: 'QEMamasAndPapas', index: 26, preview: '/fonts/QEMamasAndPapas_preview.png' },
+  { name: 'Pamela Rosenberry', family: 'QEPamRosenberry', index: 27, preview: '/fonts/QEPamRosenberry_preview.png' },
+  { name: 'Philip Bean', family: 'QEPhilipBean', index: 28, preview: '/fonts/QEPhilipBean_preview.png' },
+  { name: 'William Phillips', family: 'QEPhillips', index: 29, preview: '/fonts/QEPhillips_preview.png' },
+  { name: 'Harriet DeLaughter (Print)', family: 'QEPrintVersion', index: 30, preview: '/fonts/QEPrintVersion_preview.png' },
+  { name: 'Royston Such', family: 'QERoystonSuch', index: 31, preview: '/fonts/QERoystonSuch_preview.png' },
+  { name: 'Royston Such (Print)', family: 'QERoystonSuchCAP', index: 32, preview: '/fonts/QERoystonSuchCAP_preview.png' },
+  { name: 'Rufus', family: 'QERufus', index: 33, preview: '/fonts/QERufus_preview.png' },
+  { name: 'Ruth Stafford', family: 'QERuthStafford', index: 34, preview: '/fonts/QERuthStafford_preview.png' },
+  { name: 'Sam Roberts', family: 'QESamRoberts', index: 35, preview: '/fonts/QESamRoberts_preview.png' },
+  { name: 'Sam Roberts (2)', family: 'QESamRoberts2', index: 36, preview: '/fonts/QESamRoberts2_preview.png' },
+  { name: 'Scott Williams', family: 'QEScottWilliams', index: 37, preview: '/fonts/QEScottWilliams_preview.png' },
+  { name: 'Tim Doremus', family: 'QETimDoremus', index: 38, preview: '/fonts/QETimDoremus_preview.png' },
+  { name: 'Tony Flores', family: 'QETonyFlores', index: 39, preview: '/fonts/QETonyFlores_preview.png' },
+  { name: 'Valerie Read', family: 'QEVRead', index: 40, preview: '/fonts/QEVRead_preview.png' },
+  { name: 'Vicky Caulfield', family: 'QEVickyCaulfield', index: 41, preview: '/fonts/QEVickyCaulfield_preview.png' },
 ];
 
 // --- Components ---
@@ -89,8 +137,10 @@ export default function CreateAssignmentPage() {
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [samples, setSamples] = useState<File[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<PaperTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<PaperTemplate>(TEMPLATES[0]);
   const [selectedFont, setSelectedFont] = useState(HANDWRITING_FONTS[0]);
+  const [useExtractedStyle, setUseExtractedStyle] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPages, setGeneratedPages] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -118,87 +168,58 @@ export default function CreateAssignmentPage() {
   const generateHandwriting = async () => {
     setIsGenerating(true);
     setCurrentStep('preview');
-    
-    // Simulate generation delay
-    await new Promise(resolve => setTimeout(resolve, 2500));
 
-    // Simple multi-page generation logic
-    const words = text.split(/\s+/);
-    const wordsPerPage = 150; // Rough estimate
-    const pagesCount = Math.ceil(words.length / wordsPerPage) || 1;
-    
-    const newPages = [];
-    for (let i = 0; i < pagesCount; i++) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 800;
-      canvas.height = 1100;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Draw Background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    try {
+      const isCustom = selectedTemplate.id.startsWith('custom-');
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('template', selectedTemplate.id);
+      formData.append('fontIndex', String(selectedFont.index));
+      formData.append('inkColor', '#1a1a2e');
 
-        // Draw Lines
-        if (selectedTemplate.hasLines) {
-          ctx.strokeStyle = selectedTemplate.lineColor;
-          ctx.lineWidth = 1;
-          for (let y = 100; y < canvas.height - 50; y += selectedTemplate.lineSpacing) {
-            ctx.beginPath();
-            ctx.moveTo(50, y);
-            ctx.lineTo(canvas.width - 50, y);
-            ctx.stroke();
-          }
-          // Vertical margin line
-          ctx.strokeStyle = 'rgba(255, 0, 0, 0.1)';
-          ctx.beginPath();
-          ctx.moveTo(80, 0);
-          ctx.lineTo(80, canvas.height);
-          ctx.stroke();
-        }
+      // Tell backend whether to use extracted style or a preset font
+      const shouldUseExtracted = samples.length > 0 && useExtractedStyle;
+      formData.append('useExtractedStyle', shouldUseExtracted ? '1' : '0');
 
-        // Draw Text
-        ctx.fillStyle = '#1a1a1a';
-        ctx.font = `24px ${selectedFont.family}`;
-        
-        const pageWords = words.slice(i * wordsPerPage, (i + 1) * wordsPerPage);
-        let x = 100;
-        let y = 100 + selectedTemplate.lineSpacing - 5;
-        const maxWidth = canvas.width - 100;
-
-        pageWords.forEach(word => {
-          const metrics = ctx.measureText(word + ' ');
-          if (x + metrics.width > maxWidth) {
-            x = 100;
-            y += selectedTemplate.lineSpacing;
-          }
-          
-          // Add slight randomness to position and rotation for realism
-          ctx.save();
-          const jitterX = (Math.random() - 0.5) * 2;
-          const jitterY = (Math.random() - 0.5) * 2;
-          const rotation = (Math.random() - 0.5) * 0.02;
-          
-          ctx.translate(x + jitterX, y + jitterY);
-          ctx.rotate(rotation);
-          ctx.fillText(word, 0, 0);
-          ctx.restore();
-          
-          x += metrics.width;
-        });
-
-        newPages.push(canvas.toDataURL('image/png'));
+      // For custom templates, fetch the blob from the object URL and attach it
+      if (isCustom) {
+        const resp = await fetch(selectedTemplate.thumbnail);
+        const blob = await resp.blob();
+        formData.append('customTemplate', blob, 'template.png');
       }
+
+      // Attach handwriting sample images for style analysis
+      for (let i = 0; i < samples.length; i++) {
+        formData.append(`sample${i}`, samples[i], `sample${i}.png`);
+      }
+
+      const res = await fetch('http://127.0.0.1:5328/api/generate', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const data = await res.json();
+      setGeneratedPages(data.pages);
+    } catch (err) {
+      console.error('Generation failed:', err);
+      setGeneratedPages([]);
+    } finally {
+      setIsGenerating(false);
     }
-    
-    setGeneratedPages(newPages);
-    setIsGenerating(false);
   };
 
   const downloadPDF = () => {
-    const pdf = new jsPDF('p', 'px', [800, 1100]);
+    // Detect dimensions from first generated page
+    const img = new window.Image();
+    img.src = generatedPages[0];
+    const w = img.naturalWidth || 800;
+    const h = img.naturalHeight || 1100;
+    const pdf = new jsPDF('p', 'px', [w, h]);
     generatedPages.forEach((page, index) => {
       if (index > 0) pdf.addPage();
-      pdf.addImage(page, 'PNG', 0, 0, 800, 1100);
+      pdf.addImage(page, 'PNG', 0, 0, w, h);
     });
     pdf.save('assignment.pdf');
   };
@@ -325,7 +346,7 @@ export default function CreateAssignmentPage() {
                 </div>
                 <div className="text-sm">
                   <p className="font-bold mb-1">Why upload samples?</p>
-                  <p className="text-stone-500">Our AI analyzes your stroke patterns, pressure, and slant to generate a handwriting style that looks uniquely yours. (Currently in Beta)</p>
+                  <p className="text-stone-500">Our AI analyzes your ink color, stroke thickness, slant, and spacing from your samples and applies that style when generating. Upload 1-3 clear photos for best results.</p>
                 </div>
               </div>
 
@@ -352,14 +373,14 @@ export default function CreateAssignmentPage() {
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-display font-bold">Step 3: Paper & Font</h2>
-                <p className="text-stone-500">Choose how your assignment should look.</p>
+                <h2 className="text-3xl font-display font-bold">Step 3: Paper & Style</h2>
+                <p className="text-stone-500">Choose your paper template and handwriting style.</p>
               </div>
 
               <div className="space-y-6">
                 <label className="text-sm font-bold text-stone-600 block">Select Paper Template</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {TEMPLATES.map((t) => (
+                  {[...TEMPLATES, ...customTemplates].map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setSelectedTemplate(t)}
@@ -371,29 +392,127 @@ export default function CreateAssignmentPage() {
                       <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-sm">
                         <img src={t.thumbnail} alt={t.name} className="w-full h-full object-cover" />
                       </div>
-                      <span className="text-sm font-bold block">{t.name}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold block">{t.name}</span>
+                        {t.id.startsWith('custom-') && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCustomTemplates(prev => prev.filter(ct => ct.id !== t.id));
+                              if (selectedTemplate.id === t.id) setSelectedTemplate(TEMPLATES[0]);
+                            }}
+                            className="text-stone-400 hover:text-red-500 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </button>
                   ))}
+                  <CustomTemplateUploader onUpload={(template) => {
+                    setCustomTemplates(prev => [...prev, template]);
+                    setSelectedTemplate(template);
+                  }} />
                 </div>
               </div>
 
               <div className="space-y-6">
-                <label className="text-sm font-bold text-stone-600 block">Select Handwriting Font</label>
-                <div className="flex flex-wrap gap-3">
-                  {HANDWRITING_FONTS.map((f) => (
-                    <button
-                      key={f.name}
-                      onClick={() => setSelectedFont(f)}
-                      className={cn(
-                        "px-6 py-3 rounded-2xl border-2 transition-all font-bold",
-                        selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
-                      )}
-                      style={{ fontFamily: f.family }}
-                    >
-                      {f.name}
-                    </button>
-                  ))}
-                </div>
+                <label className="text-sm font-bold text-stone-600 block">Handwriting Style</label>
+
+                {samples.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="p-6 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                            <PenTool className="w-5 h-5 text-green-700" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">Extracted Handwriting Pattern</p>
+                            <p className="text-xs text-stone-400">Analyzed from your {samples.length} sample{samples.length > 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setUseExtractedStyle(!useExtractedStyle)}
+                          className={cn(
+                            "w-14 h-8 rounded-full transition-all relative",
+                            useExtractedStyle ? "bg-green-500" : "bg-stone-300"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all",
+                            useExtractedStyle ? "left-7" : "left-1"
+                          )} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-stone-500">
+                        {useExtractedStyle
+                          ? "Your handwriting pattern will be used — ink color, size, slant, and spacing from your samples."
+                          : "Select a pre-made handwriting font below instead."}
+                      </p>
+                    </div>
+
+                    {!useExtractedStyle && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold text-stone-500">Select a handwriting font <a href="https://www.quantumenterprises.co.uk/handwriting-fonts/fontvault.htm" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">from Font Vault</a></p>
+                        <div className="max-h-[420px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {HANDWRITING_FONTS.map((f) => (
+                            <button
+                              key={f.name}
+                              onClick={() => setSelectedFont(f)}
+                              className={cn(
+                                "p-3 rounded-2xl border-2 transition-all text-left space-y-2",
+                                selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
+                              )}
+                            >
+                              {f.preview ? (
+                                <div className="h-12 rounded-lg overflow-hidden bg-white">
+                                  <img src={f.preview} alt={f.name} className="w-full h-full object-contain" />
+                                </div>
+                              ) : (
+                                <div className="h-12 flex items-center px-2" style={{ fontFamily: f.family }}>
+                                  <span className="text-lg truncate">Hello world</span>
+                                </div>
+                              )}
+                              <span className="text-xs font-bold block truncate">{f.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-stone-500">No handwriting samples uploaded. Select a pre-made font <a href="https://www.quantumenterprises.co.uk/handwriting-fonts/fontvault.htm" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">from Font Vault</a></p>
+                    <div className="max-h-[420px] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {HANDWRITING_FONTS.map((f) => (
+                        <button
+                          key={f.name}
+                          onClick={() => setSelectedFont(f)}
+                          className={cn(
+                            "p-3 rounded-2xl border-2 transition-all text-left space-y-2",
+                            selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
+                          )}
+                        >
+                          {f.preview ? (
+                            <div className="h-12 rounded-lg overflow-hidden bg-white">
+                              <img src={f.preview} alt={f.name} className="w-full h-full object-contain" />
+                            </div>
+                          ) : (
+                            <div className="h-12 flex items-center px-2" style={{ fontFamily: f.family }}>
+                              <span className="text-lg truncate">Hello world</span>
+                            </div>
+                          )}
+                          <span className="text-xs font-bold block truncate">{f.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between pt-8">
@@ -554,5 +673,50 @@ function SampleUploader({ onUpload }: { onUpload: (file: File) => void }) {
       </div>
       <span className="text-xs font-bold text-stone-400">Add Sample</span>
     </div>
+  );
+}
+
+function CustomTemplateUploader({ onUpload }: { onUpload: (template: PaperTemplate) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const name = file.name.replace(/\.[^/.]+$/, '');
+    const template: PaperTemplate = {
+      id: `custom-${Date.now()}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      thumbnail: url,
+      bgClass: 'bg-white',
+      lineColor: 'transparent',
+      hasLines: false,
+      lineSpacing: 30,
+    };
+    onUpload(template);
+  };
+
+  return (
+    <button
+      onClick={() => inputRef.current?.click()}
+      className="p-4 rounded-3xl border-2 border-dashed border-stone-300 bg-stone-50 hover:bg-stone-100 hover:border-stone-400 transition-all text-left space-y-3"
+    >
+      <div className="aspect-[3/4] rounded-xl flex flex-col items-center justify-center gap-2">
+        <div className="w-12 h-12 bg-stone-200 rounded-xl flex items-center justify-center">
+          <Plus className="w-6 h-6 text-stone-500" />
+        </div>
+        <span className="text-xs text-stone-400 text-center">Upload your own template</span>
+      </div>
+      <span className="text-sm font-bold block text-stone-500">Custom</span>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+          e.target.value = '';
+        }}
+      />
+    </button>
   );
 }
