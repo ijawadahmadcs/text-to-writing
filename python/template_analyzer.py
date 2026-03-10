@@ -228,3 +228,197 @@ def _detect_content_margin_right(
 ) -> int:
     """Estimate right content boundary."""
     return int(w * 0.95)
+
+
+# ---------------------------------------------------------------------------
+# Advanced layout detection
+# ---------------------------------------------------------------------------
+
+def _detect_header_region(arr: np.ndarray, bg_color: np.ndarray) -> int | None:
+    """
+    Detect a header box (common in exam sheets) — a large rectangle near
+    the top of the page.  Returns the y-coordinate of the header bottom,
+    or None if no header is found.
+
+    Only triggers when there is an anomalously large gap between two
+    horizontal lines (indicating a box interior, e.g. name/date fields).
+    Regular ruled lines are ignored so they aren't mistaken for a header.
+    """
+    h, w, _ = arr.shape
+    scan_h = int(h * 0.30)
+    top_region = arr[:scan_h, :, :]
+
+    diff = np.sqrt(
+        np.sum((top_region.astype(float) - bg_color.astype(float)) ** 2, axis=2)
+    )
+    is_line_pixel = diff > 40
+
+    row_scores = np.sum(is_line_pixel, axis=1)
+    min_run = int(w * 0.3)
+    candidate_rows = np.where(row_scores >= min_run)[0]
+
+    if len(candidate_rows) < 2:
+        return None
+
+    groups: list[list[int]] = [[candidate_rows[0]]]
+    for i in range(1, len(candidate_rows)):
+        if candidate_rows[i] - candidate_rows[i - 1] <= 5:
+            groups[-1].append(candidate_rows[i])
+        else:
+            groups.append([candidate_rows[i]])
+
+    if len(groups) < 2:
+        return None
+
+    group_centers = [int(np.mean(g)) for g in groups]
+    spacings = [
+        group_centers[i + 1] - group_centers[i]
+        for i in range(len(group_centers) - 1)
+    ]
+    if not spacings:
+        return None
+
+    med_sp = statistics.median(spacings)
+
+    # A real header box has an anomalously large gap (its interior).
+    # If all spacings are roughly equal (ruled lines), there is no header.
+    header_limit = int(h * 0.25)
+    for i, sp in enumerate(spacings):
+        if sp >= med_sp * 2.5 and group_centers[i + 1] <= header_limit:
+            return group_centers[i + 1]
+
+    return None
+
+
+def _detect_hole_punches(arr: np.ndarray, bg_color: np.ndarray) -> int | None:
+    """
+    Detect hole punches on the left edge of the paper.
+    Hole punches appear as dark circles near x=0.
+    Returns the rightmost x-coordinate to avoid, or None.
+    """
+    h, w, _ = arr.shape
+    # Only scan left 8% of the image
+    scan_w = max(10, int(w * 0.08))
+    left_strip = arr[:, :scan_w, :]
+
+    diff = np.sqrt(
+        np.sum((left_strip.astype(float) - bg_color.astype(float)) ** 2, axis=2)
+    )
+    # Hole punches are dark circles — check for concentrated dark spots
+    is_dark = diff > 60
+    col_dark_count = np.sum(is_dark, axis=0)
+
+    # A hole punch creates a vertical column with many dark pixels
+    min_dark = int(h * 0.01)  # at least 1% of page height
+    dark_cols = np.where(col_dark_count >= min_dark)[0]
+
+    if len(dark_cols) == 0:
+        return None
+
+    return int(np.max(dark_cols))
+
+
+def _detect_footer_region(arr: np.ndarray, bg_color: np.ndarray) -> int | None:
+    """
+    Detect a footer area at the bottom of the page.
+    Returns the y-coordinate of the footer top, or None.
+
+    Only triggers when there is an anomalously large gap between horizontal
+    lines in the bottom region (indicating a separator before a footer box).
+    Regular ruled lines are not treated as a footer.
+    """
+    h, w, _ = arr.shape
+    scan_start = int(h * 0.80)
+    bottom_region = arr[scan_start:, :, :]
+
+    diff = np.sqrt(
+        np.sum((bottom_region.astype(float) - bg_color.astype(float)) ** 2, axis=2)
+    )
+    is_line_pixel = diff > 40
+    row_scores = np.sum(is_line_pixel, axis=1)
+    min_run = int(w * 0.3)
+    candidate_rows = np.where(row_scores >= min_run)[0]
+
+    if len(candidate_rows) < 2:
+        return None
+
+    groups: list[list[int]] = [[candidate_rows[0]]]
+    for i in range(1, len(candidate_rows)):
+        if candidate_rows[i] - candidate_rows[i - 1] <= 5:
+            groups[-1].append(candidate_rows[i])
+        else:
+            groups.append([candidate_rows[i]])
+
+    if len(groups) < 2:
+        return None
+
+    group_centers = [int(np.mean(g)) for g in groups]
+    spacings = [
+        group_centers[i + 1] - group_centers[i]
+        for i in range(len(group_centers) - 1)
+    ]
+    if not spacings:
+        return None
+
+    med_sp = statistics.median(spacings)
+
+    # A real footer region has an anomalously large gap before it
+    # (separating content from a footer box).  Evenly-spaced ruled
+    # lines reaching the bottom are normal and not a footer.
+    for i, sp in enumerate(spacings):
+        if sp >= med_sp * 2.5:
+            return scan_start + group_centers[i + 1]
+
+    return None
+
+
+def analyze_template_v2(image_bytes: bytes) -> dict[str, Any]:
+    """
+    Enhanced template analysis that accounts for header zones,
+    hole punches, and footer regions.
+    """
+    layout = analyze_template(image_bytes)
+    base_margin_top = layout['margin_top']
+    base_margin_bottom = layout['margin_bottom']
+    base_line_count = len(layout.get('line_positions', []))
+
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    arr = np.array(img)
+    bg_color = _detect_background_color(arr)
+
+    # Detect header box
+    header_bottom = _detect_header_region(arr, bg_color)
+    if header_bottom:
+        layout['margin_top'] = max(layout['margin_top'], header_bottom + 20)
+
+    # Detect hole punches
+    hole_punch_x = _detect_hole_punches(arr, bg_color)
+    if hole_punch_x:
+        layout['margin_left'] = max(layout['margin_left'], hole_punch_x + 15)
+
+    # Detect footer
+    footer_top = _detect_footer_region(arr, bg_color)
+    if footer_top:
+        layout['margin_bottom'] = min(layout['margin_bottom'], footer_top - 20)
+
+    # Filter line positions to respect updated margins
+    if layout.get('line_positions'):
+        layout['line_positions'] = [
+            lp for lp in layout['line_positions']
+            if layout['margin_top'] <= lp <= layout['margin_bottom']
+        ]
+
+        # Safety: if v2 adjustments eliminated more than 30% of lines,
+        # the detection was likely a false positive — revert margins.
+        if base_line_count > 0 and len(layout['line_positions']) < base_line_count * 0.7:
+            layout['margin_top'] = base_margin_top
+            layout['margin_bottom'] = base_margin_bottom
+            layout['line_positions'] = [
+                lp for lp in layout['line_positions']
+                if layout['margin_top'] <= lp <= layout['margin_bottom']
+            ]
+            # Re-derive from original base analysis lines
+            full_layout = analyze_template(image_bytes)
+            layout['line_positions'] = full_layout['line_positions']
+
+    return layout

@@ -31,7 +31,7 @@ from flask_cors import CORS
 
 from analyzer import analyze_samples, default_profile
 from generator import generate_pages, FONT_NAMES, BUILTIN_TEMPLATES
-from template_analyzer import analyze_template, analyze_template_from_path
+from template_analyzer import analyze_template, analyze_template_from_path, analyze_template_v2
 
 app = Flask(__name__)
 CORS(app)                       # allow cross-origin from Next.js dev server

@@ -13,6 +13,7 @@ import {
   Github,
   Twitter
 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LandingPage() {
   return (
@@ -26,7 +27,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-600">
           <Link href="#features" className="hover:text-stone-900 transition-colors">Features</Link>
           <Link href="#how-it-works" className="hover:text-stone-900 transition-colors">How it Works</Link>
-          <Link href="#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
+          <Link href="#pricing" className="hover:text-stone-900 transition-colors">Home</Link>
         </div>
         <Link 
           href="/create" 
@@ -75,10 +76,12 @@ export default function LandingPage() {
             className="mt-20 relative max-w-5xl mx-auto"
           >
             <div className="aspect-[16/9] bg-stone-200 rounded-3xl overflow-hidden shadow-2xl border-8 border-white">
-              <img 
+              <Image 
                 src="https://picsum.photos/seed/handwriting/1200/800" 
                 alt="App Preview" 
                 className="w-full h-full object-cover opacity-80"
+                fill
+                unoptimized
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="glass p-8 rounded-2xl max-w-md text-left">
@@ -175,7 +178,7 @@ export default function LandingPage() {
               </div>
               <div className="lg:w-1/2 relative">
                 <div className="aspect-square bg-stone-200 rounded-[40px] overflow-hidden rotate-3 shadow-2xl">
-                  <img src="https://picsum.photos/seed/process/800/800" alt="Process" className="w-full h-full object-cover" />
+                  <Image src="https://picsum.photos/seed/process/800/800" alt="Process" className="w-full h-full object-cover" fill unoptimized />
                 </div>
                 <div className="absolute -bottom-10 -right-10 glass p-6 rounded-3xl -rotate-3">
                   <div className="flex items-center gap-4">
@@ -223,7 +226,7 @@ export default function LandingPage() {
               <span className="text-xl font-display font-bold">ScribeAI</span>
             </div>
             <p className="text-stone-500 max-w-sm mb-8">
-              The world's most realistic text-to-handwriting converter. Built for students, by students.
+              The world`s most realistic text-to-handwriting converter. Built for students, by students.
             </p>
             <div className="flex gap-4">
               <button className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center hover:bg-stone-100 transition-colors">
@@ -254,7 +257,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-stone-200 text-center text-stone-400 text-sm">
-          © 2024 ScribeAI. All rights reserved.
+          © 2026 ScribeAI. All rights reserved.
         </div>
       </footer>
     </div>

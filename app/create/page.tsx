@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Upload, 
@@ -18,7 +19,10 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Plus
+  Plus,
+  Palette,
+  Type,
+  Beaker
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { jsPDF } from 'jspdf';
@@ -65,24 +69,24 @@ const TEMPLATES: PaperTemplate[] = [
     hasLines: true,
     lineSpacing: 88
   },
-  { 
-    id: 'grid', 
-    name: 'Grid Paper', 
-    thumbnail: '/templates/grid.png',
-    bgClass: 'bg-white',
-    lineColor: 'rgba(200, 220, 240, 0.4)',
-    hasLines: true,
-    lineSpacing: 62
-  },
-  { 
-    id: 'dotted', 
-    name: 'Dot Grid', 
-    thumbnail: '/templates/dotted.png',
-    bgClass: 'bg-white',
-    lineColor: 'rgba(180, 190, 200, 0.3)',
-    hasLines: false,
-    lineSpacing: 62
-  }
+  // { 
+  //   id: 'grid', 
+  //   name: 'Grid Paper', 
+  //   thumbnail: '/templates/grid.png',
+  //   bgClass: 'bg-white',
+  //   lineColor: 'rgba(200, 220, 240, 0.4)',
+  //   hasLines: true,
+  //   lineSpacing: 62
+  // },
+  // { 
+  //   id: 'dotted', 
+  //   name: 'Dot Grid', 
+  //   thumbnail: '/templates/dotted.png',
+  //   bgClass: 'bg-white',
+  //   lineColor: 'rgba(180, 190, 200, 0.3)',
+  //   hasLines: false,
+  //   lineSpacing: 62
+  // }
 ];
 
 const HANDWRITING_FONTS = [
@@ -144,11 +148,26 @@ export default function CreateAssignmentPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPages, setGeneratedPages] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [inkColor, setInkColor] = useState('#1a1a2e');
+  const [fontSize, setFontSize] = useState<number | null>(null); // null = auto
+  const regenerateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-regenerate when ink color or font size changes during preview
+  useEffect(() => {
+    if (currentStep !== 'preview' || isGenerating || generatedPages.length === 0) return;
+    if (regenerateTimerRef.current) clearTimeout(regenerateTimerRef.current);
+    regenerateTimerRef.current = setTimeout(() => {
+      generateHandwriting();
+    }, 600);
+    return () => { if (regenerateTimerRef.current) clearTimeout(regenerateTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inkColor, fontSize]);
 
   // Load fonts (simulated for MVP)
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Dancing+Script&family=Indie+Flower&family=Great+Vibes&family=Architects+Daughter&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Dancing+Script&family=Indie+Flower&family=Caveat&family=Architects+Daughter&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
   }, []);
@@ -167,6 +186,7 @@ export default function CreateAssignmentPage() {
 
   const generateHandwriting = async () => {
     setIsGenerating(true);
+    setErrorMessage(null);
     setCurrentStep('preview');
 
     try {
@@ -175,7 +195,8 @@ export default function CreateAssignmentPage() {
       formData.append('text', text);
       formData.append('template', selectedTemplate.id);
       formData.append('fontIndex', String(selectedFont.index));
-      formData.append('inkColor', '#1a1a2e');
+      formData.append('inkColor', inkColor);
+      if (fontSize) formData.append('fontSize', String(fontSize));
 
       // Tell backend whether to use extracted style or a preset font
       const shouldUseExtracted = samples.length > 0 && useExtractedStyle;
@@ -193,21 +214,34 @@ export default function CreateAssignmentPage() {
         formData.append(`sample${i}`, samples[i], `sample${i}.png`);
       }
 
-      const res = await fetch('http://127.0.0.1:5328/api/generate', {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         body: formData,
       });
 
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error: ${res.status}`);
+
       setGeneratedPages(data.pages);
     } catch (err) {
       console.error('Generation failed:', err);
+      const msg = err instanceof Error ? err.message : 'Generation failed. Please try again.';
+      setErrorMessage(msg);
       setGeneratedPages([]);
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const downloadImages = () => {
+    generatedPages.forEach((page, i) => {
+      const link = document.createElement('a');
+      link.href = page;
+      link.download = `page-${i + 1}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   };
 
   const downloadPDF = () => {
@@ -325,19 +359,16 @@ export default function CreateAssignmentPage() {
                 <p className="text-stone-500">Upload 2-3 images of your handwriting for style analysis.</p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
-                <SampleUploader onUpload={(file) => setSamples([...samples, file])} />
-                {samples.map((file, i) => (
-                  <div key={i} className="aspect-[3/4] rounded-3xl bg-white border border-stone-200 overflow-hidden relative group">
-                    <img src={URL.createObjectURL(file)} alt="Sample" className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => setSamples(samples.filter((_, idx) => idx !== i))}
-                      className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+              <div className="relative rounded-3xl">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm rounded-3xl">
+                  <div className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-bold">
+                    <Beaker className="w-4 h-4" /> In Testing Phase
                   </div>
-                ))}
+                  <p className="text-xs text-stone-500 mt-2">Handwriting sample analysis coming soon</p>
+                </div>
+                <div className="grid md:grid-cols-3 gap-6 pointer-events-none select-none opacity-50">
+                  <SampleUploader onUpload={() => {}} />
+                </div>
               </div>
 
               <div className="bg-stone-100 p-6 rounded-3xl flex gap-4 items-start">
@@ -389,8 +420,8 @@ export default function CreateAssignmentPage() {
                         selectedTemplate.id === t.id ? "border-stone-900 bg-white shadow-lg" : "border-transparent bg-stone-100 hover:bg-stone-200"
                       )}
                     >
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-sm">
-                        <img src={t.thumbnail} alt={t.name} className="w-full h-full object-cover" />
+                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-sm relative">
+                        <Image src={t.thumbnail} alt={t.name} className="w-full h-full object-cover" fill unoptimized />
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold block">{t.name}</span>
@@ -409,110 +440,84 @@ export default function CreateAssignmentPage() {
                       </div>
                     </button>
                   ))}
-                  <CustomTemplateUploader onUpload={(template) => {
-                    setCustomTemplates(prev => [...prev, template]);
-                    setSelectedTemplate(template);
-                  }} />
+                  <div className="p-4 rounded-3xl border-2 border-dashed border-stone-300 bg-stone-50 text-left space-y-3">
+                    <span className="text-sm font-bold block text-stone-700">Custom Template</span>
+                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
+                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm">
+                        <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-bold">
+                          <Beaker className="w-3 h-3" /> Coming Soon
+                        </div>
+                      </div>
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 pointer-events-none select-none opacity-50">
+                        <div className="w-12 h-12 bg-stone-200 rounded-xl flex items-center justify-center">
+                          <Plus className="w-6 h-6 text-stone-500" />
+                        </div>
+                        <span className="text-xs text-stone-400 text-center">Upload your own template</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <label className="text-sm font-bold text-stone-600 block">Handwriting Style</label>
 
-                {samples.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="p-6 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                            <PenTool className="w-5 h-5 text-green-700" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm">Extracted Handwriting Pattern</p>
-                            <p className="text-xs text-stone-400">Analyzed from your {samples.length} sample{samples.length > 1 ? 's' : ''}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setUseExtractedStyle(!useExtractedStyle)}
-                          className={cn(
-                            "w-14 h-8 rounded-full transition-all relative",
-                            useExtractedStyle ? "bg-green-500" : "bg-stone-300"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all",
-                            useExtractedStyle ? "left-7" : "left-1"
-                          )} />
-                        </button>
-                      </div>
-                      <p className="text-xs text-stone-500">
-                        {useExtractedStyle
-                          ? "Your handwriting pattern will be used — ink color, size, slant, and spacing from your samples."
-                          : "Select a pre-made handwriting font below instead."}
-                      </p>
+                {/* Extracted style — always shown, blurred as testing */}
+                <div className="relative rounded-3xl">
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm rounded-3xl">
+                    <div className="flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-bold">
+                      <Beaker className="w-4 h-4" /> In Testing Phase
                     </div>
+                    <p className="text-xs text-stone-500 mt-2">Style extraction from samples coming soon</p>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-white border border-stone-200 shadow-sm space-y-4 pointer-events-none select-none opacity-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                          <PenTool className="w-5 h-5 text-green-700" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Extracted Handwriting Pattern</p>
+                          <p className="text-xs text-stone-400">Analyzed from your samples</p>
+                        </div>
+                      </div>
+                      <div className="w-14 h-8 rounded-full bg-green-500 relative">
+                        <div className="w-6 h-6 bg-white rounded-full shadow-md absolute top-1 left-7" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500">Your handwriting pattern will be used — ink color, size, slant, and spacing from your samples.</p>
+                  </div>
+                </div>
 
-                    {!useExtractedStyle && (
-                      <div className="space-y-3">
-                        <p className="text-xs font-bold text-stone-500">Select a handwriting font <a href="https://www.quantumenterprises.co.uk/handwriting-fonts/fontvault.htm" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">from Font Vault</a></p>
-                        <div className="max-h-[420px] overflow-y-auto pr-1">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {HANDWRITING_FONTS.map((f) => (
-                            <button
-                              key={f.name}
-                              onClick={() => setSelectedFont(f)}
-                              className={cn(
-                                "p-3 rounded-2xl border-2 transition-all text-left space-y-2",
-                                selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
-                              )}
-                            >
-                              {f.preview ? (
-                                <div className="h-12 rounded-lg overflow-hidden bg-white">
-                                  <img src={f.preview} alt={f.name} className="w-full h-full object-contain" />
-                                </div>
-                              ) : (
-                                <div className="h-12 flex items-center px-2" style={{ fontFamily: f.family }}>
-                                  <span className="text-lg truncate">Hello world</span>
-                                </div>
-                              )}
-                              <span className="text-xs font-bold block truncate">{f.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                        </div>
-                      </div>
-                    )}
+                {/* Font selector — always visible */}
+                <div className="space-y-3">
+                  <p className="text-xs text-stone-500">Select a pre-made font </p>
+                  <div className="max-h-[420px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {HANDWRITING_FONTS.map((f) => (
+                      <button
+                        key={f.name}
+                        onClick={() => setSelectedFont(f)}
+                        className={cn(
+                          "p-3 rounded-2xl border-2 transition-all text-left space-y-2",
+                          selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
+                        )}
+                      >
+                        {f.preview ? (
+                          <div className="h-12 rounded-lg overflow-hidden bg-white relative">
+                            <Image src={f.preview} alt={f.name} className="w-full h-full object-contain" fill unoptimized />
+                          </div>
+                        ) : (
+                          <div className="h-12 flex items-center px-2" style={{ fontFamily: f.family }}>
+                            <span className="text-lg truncate">Hello world</span>
+                          </div>
+                        )}
+                        <span className="text-xs font-bold block truncate">{f.name}</span>
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-xs text-stone-500">No handwriting samples uploaded. Select a pre-made font <a href="https://www.quantumenterprises.co.uk/handwriting-fonts/fontvault.htm" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">from Font Vault</a></p>
-                    <div className="max-h-[420px] overflow-y-auto pr-1">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {HANDWRITING_FONTS.map((f) => (
-                        <button
-                          key={f.name}
-                          onClick={() => setSelectedFont(f)}
-                          className={cn(
-                            "p-3 rounded-2xl border-2 transition-all text-left space-y-2",
-                            selectedFont.name === f.name ? "border-stone-900 bg-white shadow-md" : "border-transparent bg-stone-100 hover:bg-stone-200"
-                          )}
-                        >
-                          {f.preview ? (
-                            <div className="h-12 rounded-lg overflow-hidden bg-white">
-                              <img src={f.preview} alt={f.name} className="w-full h-full object-contain" />
-                            </div>
-                          ) : (
-                            <div className="h-12 flex items-center px-2" style={{ fontFamily: f.family }}>
-                              <span className="text-lg truncate">Hello world</span>
-                            </div>
-                          )}
-                          <span className="text-xs font-bold block truncate">{f.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="flex justify-between pt-8">
@@ -547,6 +552,30 @@ export default function CreateAssignmentPage() {
                     <p className="text-stone-500">Applying handwriting style and rendering pages.</p>
                   </div>
                 </div>
+              ) : errorMessage ? (
+                <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <X className="w-8 h-8 text-red-500" />
+                  </div>
+                  <div className="text-center max-w-md">
+                    <h3 className="text-2xl font-bold text-red-600 mb-2">Generation Failed</h3>
+                    <p className="text-stone-500 text-sm">{errorMessage}</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => { setErrorMessage(null); setCurrentStep('template'); }}
+                      className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Try Again
+                    </button>
+                    <button
+                      onClick={() => { setErrorMessage(null); setCurrentStep('upload'); }}
+                      className="bg-white border border-stone-200 text-stone-900 px-8 py-3 rounded-2xl font-bold hover:bg-stone-50 transition-all"
+                    >
+                      Start Over
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="grid lg:grid-cols-[1fr_300px] gap-8">
                   <div className="space-y-6">
@@ -562,8 +591,8 @@ export default function CreateAssignmentPage() {
                     <div className="bg-stone-200 rounded-[40px] p-8 overflow-auto max-h-[70vh] flex justify-center">
                       <div className="space-y-8" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                         {generatedPages.map((page, i) => (
-                          <div key={i} className="bg-white shadow-2xl rounded-sm overflow-hidden w-[600px] aspect-[1/1.414]">
-                            <img src={page} alt={`Page ${i + 1}`} className="w-full h-full object-contain" />
+                          <div key={i} className="bg-white shadow-2xl rounded-sm overflow-hidden w-[600px] aspect-[1/1.414] relative">
+                            <Image src={page} alt={`Page ${i + 1}`} className="w-full h-full object-contain" fill unoptimized />
                           </div>
                         ))}
                       </div>
@@ -579,7 +608,10 @@ export default function CreateAssignmentPage() {
                       >
                         <Download className="w-5 h-5" /> Download PDF
                       </button>
-                      <button className="w-full bg-white border border-stone-200 text-stone-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-stone-50 transition-all">
+                      <button
+                        onClick={downloadImages}
+                        className="w-full bg-white border border-stone-200 text-stone-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-stone-50 transition-all"
+                      >
                         <ImageIcon className="w-5 h-5" /> Download Images
                       </button>
                       
@@ -593,12 +625,69 @@ export default function CreateAssignmentPage() {
                       </button>
                     </div>
 
+                    <div className="glass p-6 rounded-3xl space-y-5">
+                      <h3 className="font-bold">Style Options</h3>
+                      
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-stone-600 flex items-center gap-2">
+                          <Palette className="w-3.5 h-3.5" /> Ink Color
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={inkColor}
+                            onChange={(e) => setInkColor(e.target.value)}
+                            className="w-10 h-10 rounded-xl border border-stone-200 cursor-pointer bg-transparent"
+                          />
+                          <div className="flex gap-1.5">
+                            {['#1a1a2e', '#1a237e', '#0d47a1', '#1b5e20', '#4a148c', '#b71c1c'].map(c => (
+                              <button
+                                key={c}
+                                onClick={() => setInkColor(c)}
+                                className={cn(
+                                  "w-7 h-7 rounded-lg border-2 transition-all",
+                                  inkColor === c ? "border-stone-900 scale-110" : "border-transparent hover:scale-105"
+                                )}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-stone-600 flex items-center gap-2">
+                          <Type className="w-3.5 h-3.5" /> Font Size
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={20}
+                            max={80}
+                            value={fontSize ?? 42}
+                            onChange={(e) => setFontSize(Number(e.target.value))}
+                            className="flex-1 accent-stone-900"
+                          />
+                          <span className="text-xs font-mono w-8 text-center text-stone-500">{fontSize ?? 42}</span>
+                        </div>
+                        <button
+                          onClick={() => setFontSize(null)}
+                          className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                        >
+                          Reset to auto
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-stone-400">Changes auto-apply after a brief delay.</p>
+                    </div>
+
                     <div className="p-6 rounded-3xl bg-stone-100 space-y-4">
                       <h4 className="text-sm font-bold">Summary</h4>
                       <div className="space-y-2 text-xs text-stone-500">
                         <div className="flex justify-between"><span>Pages</span><span>{generatedPages.length}</span></div>
                         <div className="flex justify-between"><span>Template</span><span>{selectedTemplate.name}</span></div>
                         <div className="flex justify-between"><span>Font</span><span>{selectedFont.name}</span></div>
+                        <div className="flex justify-between"><span>Ink</span><span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full inline-block" style={{backgroundColor: inkColor}} />{inkColor}</span></div>
                       </div>
                     </div>
                   </div>
@@ -615,6 +704,9 @@ export default function CreateAssignmentPage() {
 // --- Sub-components ---
 
 function UploadZone({ onFileSelect }: { onFileSelect: (name: string, content: string) => void }) {
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/pdf': ['.pdf'],
@@ -624,14 +716,30 @@ function UploadZone({ onFileSelect }: { onFileSelect: (name: string, content: st
     multiple: false,
     onDrop: async (acceptedFiles) => {
       const file = acceptedFiles[0];
-      if (file) {
-        // For MVP, we'll just simulate reading text
-        // In a real app, we'd use pdf-parse or mammoth
-        const reader = new FileReader();
-        reader.onload = () => {
-          onFileSelect(file.name, "This is simulated text extracted from your document. In a production environment, we would use libraries like pdf-parse or mammoth to extract the actual content from your PDF or DOCX files. For now, you can paste your own text in the left panel to see the handwriting generation in action!");
-        };
-        reader.readAsText(file);
+      if (!file) return;
+
+      setExtracting(true);
+      setExtractError(null);
+
+      try {
+        const form = new FormData();
+        form.append('file', file);
+
+        const res = await fetch('/api/extract', {
+          method: 'POST',
+          body: form,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Extraction failed');
+
+        onFileSelect(file.name, data.text);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not extract text from file.';
+        setExtractError(msg);
+        console.error('Extraction error:', err);
+      } finally {
+        setExtracting(false);
       }
     }
   });
@@ -649,8 +757,20 @@ function UploadZone({ onFileSelect }: { onFileSelect: (name: string, content: st
         <Upload className="w-8 h-8 text-stone-500" />
       </div>
       <div className="text-center">
-        <p className="font-bold">Click or drag to upload</p>
-        <p className="text-xs text-stone-400">PDF, DOCX, or TXT (Max 10MB)</p>
+        {extracting ? (
+          <>
+            <Loader2 className="w-5 h-5 text-stone-500 animate-spin mx-auto mb-1" />
+            <p className="font-bold text-sm">Extracting text...</p>
+          </>
+        ) : (
+          <>
+            <p className="font-bold">Click or drag to upload</p>
+            <p className="text-xs text-stone-400">PDF, DOCX, or TXT (Max 10MB)</p>
+          </>
+        )}
+        {extractError && (
+          <p className="text-xs text-red-500 mt-2">{extractError}</p>
+        )}
       </div>
     </div>
   );

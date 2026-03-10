@@ -11,7 +11,6 @@ Templates:
 
 import math
 from pathlib import Path
-
 from PIL import Image, ImageDraw, ImageFont
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "public" / "templates"
@@ -85,49 +84,41 @@ def generate_blank():
 # -----------------------------------------------------------------------
 # 3. Exam / Answer Sheet
 # -----------------------------------------------------------------------
+
 def generate_exam():
+
     img = Image.new("RGB", (W, H), (255, 255, 255))
     img = _subtle_paper_texture(img)
+
     draw = ImageDraw.Draw(img)
 
-    line_color = (190, 190, 190)
-    margin_color = (210, 150, 150)
+    line_color = (120, 120, 120)
+    margin_color = (220, 60, 90)
+    top_line_color = (120, 80, 160)
 
-    # Header area
-    draw.rectangle([(100, 80), (W - 100, 380)], outline=(180, 180, 180), width=3)
+    # horizontal ruled lines
+    line_spacing = 110
+    y = 300
 
-    # Header fields
-    try:
-        hdr_font = ImageFont.truetype("arial.ttf", 42)
-    except OSError:
-        hdr_font = ImageFont.load_default()
-
-    fields = [
-        ("Name: ___________________________________", 160, 120),
-        ("Date: __________________    Subject: _______________________", 160, 200),
-        ("Roll No: _______________    Section: _______________________", 160, 280),
-    ]
-    for text, fx, fy in fields:
-        draw.text((fx, fy), text, fill=(100, 100, 100), font=hdr_font)
-
-    # Ruled lines below header
-    line_spacing = 88
-    first_line_y = 480
-    y = first_line_y
-    while y < H - 200:
-        draw.line([(140, y), (W - 140, y)], fill=line_color, width=2)
+    while y < H - 150:
+        draw.line([(120, y), (W - 120, y)], fill=line_color, width=3)
         y += line_spacing
 
-    # Left margin line
-    draw.line([(240, 400), (240, H - 100)], fill=margin_color, width=3)
+    # left margin line
+    left_margin_x = 300
+    draw.line([(left_margin_x, 120), (left_margin_x, H - 120)], fill=margin_color, width=6)
 
-    # Outer border
-    draw.rectangle([(80, 60), (W - 80, H - 60)], outline=(160, 160, 160), width=4)
+    # right margin line
+    right_margin_x = W - 300
+    draw.line([(right_margin_x, 120), (right_margin_x, H - 120)], fill=margin_color, width=6)
+
+    # top line
+    draw.line([(120, 220), (W - 120, 220)], fill=top_line_color, width=5)
 
     out = img.convert("RGB")
-    out.save(OUTPUT_DIR / "exam.png", "PNG", dpi=(300, 300))
-    print(f"  ✓ exam.png   ({W}×{H})")
+    out.save(OUTPUT_DIR / "notebook_template.png", "PNG", dpi=(300, 300))
 
+    print(f"✓ notebook_template.png ({W}×{H})")
 
 # -----------------------------------------------------------------------
 # 4. Grid / Graph Paper
