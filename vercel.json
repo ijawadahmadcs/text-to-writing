@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "api/index.py": {
+      "runtime": "@vercel/python",
+      "includeFiles": "python/**/*.py,public/fonts/**/*.ttf,public/templates/**/*.png"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/generate", "destination": "/api/index" },
+    { "source": "/api/fonts", "destination": "/api/index" },
+    { "source": "/api/templates", "destination": "/api/index" },
+    { "source": "/api/analyze", "destination": "/api/index" },
+    { "source": "/api/analyze-template", "destination": "/api/index" }
+  ]
+}

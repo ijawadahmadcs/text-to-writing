@@ -1,30 +1,17 @@
 """
-Flask dev server that exposes the handwriting generator as a REST API.
+Vercel Python Serverless Function — exposes the handwriting generator
+as serverless API endpoints on Vercel (no separate backend needed).
 
-Endpoints
----------
-POST /api/generate
-    Form fields:
-        text        (required) — the text to render
-        template    (optional) — "lined" | "blank" | "exam"  (default: "lined")
-        fontIndex   (optional) — 0-3                         (default: 0)
-        fontSize    (optional) — int                         (default: auto)
-        lineSpacing (optional) — int                         (default: auto)
-        inkColor    (optional) — hex color                   (default: "#1a1a2e")
-    File fields:
-        customTemplate (optional) — a PNG/JPG image to use as background
-
-    Returns JSON: { "pages": ["data:image/png;base64,...", ...] }
-
-GET /api/fonts
-    Returns JSON list of available font names.
-
-GET /api/templates
-    Returns JSON list of built-in template ids.
+Locally, use python/dev_server.py instead.
 """
 
-import base64
+import sys
 import os
+
+# Make the python/ package importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python'))
+
+import base64
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -34,12 +21,11 @@ from generator import generate_pages, FONT_NAMES, BUILTIN_TEMPLATES
 from template_analyzer import analyze_template, analyze_template_from_path, analyze_template_v2
 
 app = Flask(__name__)
-CORS(app)                       # allow cross-origin from Next.js dev server
+CORS(app)
 
 
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
-    # Accept both JSON and multipart/form-data
     sample_bytes_list: list[bytes] = []
 
     if request.content_type and "multipart" in request.content_type:
@@ -54,7 +40,6 @@ def api_generate():
         custom_file = request.files.get("customTemplate")
         custom_bytes = custom_file.read() if custom_file else None
 
-        # Collect handwriting sample images
         for key in request.files:
             if key.startswith("sample"):
                 sample_bytes_list.append(request.files[key].read())
@@ -73,18 +58,16 @@ def api_generate():
         if b64_template:
             custom_bytes = base64.b64decode(b64_template)
 
-        # Support base64-encoded samples in JSON mode
         for b64 in (data.get("samples") or []):
             sample_bytes_list.append(base64.b64decode(b64))
 
     if not text.strip():
         return jsonify({"error": "text is required"}), 400
 
-    # Analyze samples → style profile only if user chose extracted style
     if use_extracted and sample_bytes_list:
         profile = analyze_samples(sample_bytes_list)
     else:
-        profile = None  # use default — font_index drives the font choice
+        profile = None
 
     font_size = int(font_size) if font_size else None
     line_spacing = int(line_spacing) if line_spacing else None
@@ -104,22 +87,25 @@ def api_generate():
         "data:image/png;base64," + base64.b64encode(p).decode()
         for p in pages
     ]
-    return jsonify({"pages": encoded, "profile": _serialize_profile(profile) if profile else None})
+    return jsonify({
+        "pages": encoded,
+        "profile": _serialize_profile(profile) if profile else None,
+    })
 
 
-def _serialize_profile(p: dict | None) -> dict | None:
-    """Make the profile JSON-serializable."""
-    if p is None:
-        return None
-    out = dict(p)
-    if isinstance(out.get("ink_color"), tuple):
-        out["ink_color"] = list(out["ink_color"])
-    return out
+@app.route("/api/fonts", methods=["GET"])
+def api_fonts():
+    return jsonify(FONT_NAMES)
+
+
+@app.route("/api/templates", methods=["GET"])
+def api_templates():
+    return jsonify(list(BUILTIN_TEMPLATES.keys()))
 
 
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
-    """Analyze handwriting samples and return the style profile (no generation)."""
+    """Analyze handwriting samples and return the style profile."""
     sample_bytes_list: list[bytes] = []
 
     if request.content_type and "multipart" in request.content_type:
@@ -136,16 +122,6 @@ def api_analyze():
 
     profile = analyze_samples(sample_bytes_list)
     return jsonify({"profile": _serialize_profile(profile)})
-
-
-@app.route("/api/fonts", methods=["GET"])
-def api_fonts():
-    return jsonify(FONT_NAMES)
-
-
-@app.route("/api/templates", methods=["GET"])
-def api_templates():
-    return jsonify(list(BUILTIN_TEMPLATES.keys()))
 
 
 @app.route("/api/analyze-template", methods=["POST"])
@@ -171,7 +147,10 @@ def api_analyze_template():
     return jsonify(layout)
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5328))
-    host = os.environ.get("HOST", "127.0.0.1")
-    app.run(host=host, port=port, debug=(host == "127.0.0.1"))
+def _serialize_profile(p: dict | None) -> dict | None:
+    if p is None:
+        return None
+    out = dict(p)
+    if isinstance(out.get("ink_color"), tuple):
+        out["ink_color"] = list(out["ink_color"])
+    return out

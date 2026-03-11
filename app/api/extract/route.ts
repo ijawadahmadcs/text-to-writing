@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
 }
 
 async function extractPDF(buffer: Buffer): Promise<string> {
-  // pdf-parse is listed in package.json dependencies
+  // Import the library directly to avoid pdf-parse's debug-mode file read
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfParse = await import('pdf-parse') as any;
+  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')) as any;
   const parse = pdfParse.default ?? pdfParse;
   const data = await parse(buffer);
   return data.text;

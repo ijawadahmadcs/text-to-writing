@@ -495,6 +495,10 @@ def generate_pages(
     size_jitter = profile.get("size_jitter", 0.0)
     char_spacing_mul = profile.get("char_spacing", 1.0)
 
+    # Connectivity: 0 = print, 1 = cursive — tighten spacing for cursive
+    connectivity = profile.get("connectivity", 0.0)
+    char_spacing_mul *= 1.0 - connectivity * 0.25  # up to 25% tighter
+
     # ------------------------------------------------------------------
     # Paginate & render
     # ------------------------------------------------------------------
@@ -523,7 +527,7 @@ def generate_pages(
                 page, word, active_font, ink_rgb, wx, wy,
                 y_jitter_std, x_jitter_std, rot_jitter_std,
                 slant_rad, pressure_var, size_jitter,
-                char_spacing_mul,
+                char_spacing_mul, connectivity,
             )
 
         # Add ink artifacts for realism
@@ -597,20 +601,26 @@ def _draw_word_natural(
     pressure_variance: float,
     size_jitter: float,
     char_spacing_mul: float,
+    connectivity: float = 0.0,
 ):
     """
     Render a word character-by-character with independent per-character
     jitter, pressure variation, and micro-rotation for natural handwriting.
+    Connectivity (0=print, 1=cursive) reduces inter-char jitter for
+    more fluid connected strokes.
     """
     char_x = x
     chars_since_pressure = 0
     pressure_interval = random.randint(3, 8)
     current_fill = _vary_ink_color(ink_rgb, pressure_variance)
 
+    # Dampen per-char jitter for cursive styles
+    jitter_dampen = 1.0 - connectivity * 0.5
+
     for char in word:
-        # Per-character micro-jitter
-        dy = random.gauss(0, y_jitter_std)
-        dx = random.gauss(0, x_jitter_std * 0.3)
+        # Per-character micro-jitter (reduced for cursive)
+        dy = random.gauss(0, y_jitter_std * jitter_dampen)
+        dx = random.gauss(0, x_jitter_std * 0.3 * jitter_dampen)
         angle = slant_rad + random.gauss(0, rot_jitter_std)
 
         # Pressure change every few characters
