@@ -219,8 +219,13 @@ export default function CreateAssignmentPage() {
         body: formData,
       });
 
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = `Server error: ${res.status}`;
+        try { const j = JSON.parse(text); msg = j.error || msg; } catch { /* non-JSON response */ }
+        throw new Error(msg);
+      }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Server error: ${res.status}`);
 
       setGeneratedPages(data.pages);
     } catch (err) {
@@ -261,34 +266,34 @@ export default function CreateAssignmentPage() {
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col">
       {/* Header */}
-      <header className="glass px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center text-white font-bold">S</Link>
-          <div className="h-4 w-px bg-stone-200" />
-          <h1 className="font-bold text-stone-600">Create Assignment</h1>
+      <header className="glass px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link href="/" className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-900 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base">P</Link>
+          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
+          <h1 className="font-bold text-stone-600 text-xs sm:text-base hidden sm:block">Create Assignment</h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {['upload', 'samples', 'template', 'preview'].map((step, i) => (
             <React.Fragment key={step}>
               <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                "w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all",
                 currentStep === step ? "bg-stone-900 text-white scale-110" : 
                 (i < ['upload', 'samples', 'template', 'preview'].indexOf(currentStep) ? "bg-green-500 text-white" : "bg-stone-200 text-stone-400")
               )}>
-                {i < ['upload', 'samples', 'template', 'preview'].indexOf(currentStep) ? <Check className="w-4 h-4" /> : i + 1}
+                {i < ['upload', 'samples', 'template', 'preview'].indexOf(currentStep) ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : i + 1}
               </div>
-              {i < 3 && <div className="w-4 h-px bg-stone-200" />}
+              {i < 3 && <div className="w-2 sm:w-4 h-px bg-stone-200" />}
             </React.Fragment>
           ))}
         </div>
 
         <button className="text-stone-400 hover:text-stone-900 transition-colors">
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </header>
 
-      <main className="flex-grow p-6 md:p-12 max-w-5xl mx-auto w-full">
+      <main className="flex-grow p-4 sm:p-6 md:p-12 max-w-5xl mx-auto w-full">
         <AnimatePresence mode="wait">
           {currentStep === 'upload' && (
             <motion.div
@@ -299,11 +304,11 @@ export default function CreateAssignmentPage() {
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-display font-bold">Step 1: Upload Content</h2>
-                <p className="text-stone-500">Paste your text or upload a document to get started.</p>
+                <h2 className="text-2xl sm:text-3xl font-display font-bold">Step 1: Upload Content</h2>
+                <p className="text-stone-500 text-sm sm:text-base">Paste your text or upload a document to get started.</p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 <div className="space-y-4">
                   <label className="text-sm font-bold text-stone-600 block">Paste Text</label>
                   <textarea 
@@ -355,8 +360,8 @@ export default function CreateAssignmentPage() {
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-display font-bold">Step 2: Handwriting Samples</h2>
-                <p className="text-stone-500">Upload 2-3 images of your handwriting for style analysis.</p>
+                <h2 className="text-2xl sm:text-3xl font-display font-bold">Step 2: Handwriting Samples</h2>
+                <p className="text-stone-500 text-sm sm:text-base">Upload 2-3 images of your handwriting for style analysis.</p>
               </div>
 
               <div className="relative rounded-3xl">
@@ -404,13 +409,13 @@ export default function CreateAssignmentPage() {
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h2 className="text-3xl font-display font-bold">Step 3: Paper & Style</h2>
-                <p className="text-stone-500">Choose your paper template and handwriting style.</p>
+                <h2 className="text-2xl sm:text-3xl font-display font-bold">Step 3: Paper & Style</h2>
+                <p className="text-stone-500 text-sm sm:text-base">Choose your paper template and handwriting style.</p>
               </div>
 
               <div className="space-y-6">
                 <label className="text-sm font-bold text-stone-600 block">Select Paper Template</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                   {[...TEMPLATES, ...customTemplates].map((t) => (
                     <button
                       key={t.id}
@@ -493,7 +498,7 @@ export default function CreateAssignmentPage() {
                 <div className="space-y-3">
                   <p className="text-xs text-stone-500">Select a pre-made font </p>
                   <div className="max-h-[420px] overflow-y-auto pr-1">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {HANDWRITING_FONTS.map((f) => (
                       <button
                         key={f.name}
@@ -577,10 +582,10 @@ export default function CreateAssignmentPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid lg:grid-cols-[1fr_300px] gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 sm:gap-8">
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-bold">Preview</h2>
+                      <h2 className="text-xl sm:text-2xl font-bold">Preview</h2>
                       <div className="flex items-center gap-2 bg-white rounded-xl p-1 border border-stone-200">
                         <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-2 hover:bg-stone-50 rounded-lg"><ZoomOut className="w-4 h-4" /></button>
                         <span className="text-xs font-mono w-12 text-center">{Math.round(zoom * 100)}%</span>
@@ -588,10 +593,10 @@ export default function CreateAssignmentPage() {
                       </div>
                     </div>
 
-                    <div className="bg-stone-200 rounded-[40px] p-8 overflow-auto max-h-[70vh] flex justify-center">
-                      <div className="space-y-8" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+                    <div className="bg-stone-200 rounded-2xl sm:rounded-[40px] p-4 sm:p-8 overflow-auto max-h-[60vh] sm:max-h-[70vh] flex justify-center">
+                      <div className="space-y-6 sm:space-y-8" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                         {generatedPages.map((page, i) => (
-                          <div key={i} className="bg-white shadow-2xl rounded-sm overflow-hidden w-[600px] aspect-[1/1.414] relative">
+                          <div key={i} className="bg-white shadow-2xl rounded-sm overflow-hidden w-[300px] sm:w-[450px] md:w-[600px] aspect-[1/1.414] relative">
                             <Image src={page} alt={`Page ${i + 1}`} className="w-full h-full object-contain" fill unoptimized />
                           </div>
                         ))}

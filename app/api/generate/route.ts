@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5328';
+/**
+ * Proxy for /api/generate — works in both environments:
+ * - Local dev: forwards to Flask dev server at localhost:5328
+ * - Vercel: forwards to the Python serverless function at /api/index
+ *   (since Next.js routes take priority over vercel.json rewrites)
+ */
 
 export async function POST(req: NextRequest) {
+  let backendUrl: string;
+
+  if (process.env.VERCEL_URL) {
+    // On Vercel: call the Python serverless function directly
+    const proto = process.env.VERCEL_ENV === 'development' ? 'http' : 'https';
+    backendUrl = `${proto}://${process.env.VERCEL_URL}/api/index`;
+  } else if (process.env.BACKEND_URL) {
+    backendUrl = `${process.env.BACKEND_URL}/api/generate`;
+  } else {
+    backendUrl = 'http://127.0.0.1:5328/api/generate';
+  }
+
   try {
     const formData = await req.formData();
 
-    // Forward the multipart form data to the Flask backend
-    const res = await fetch(`${BACKEND_URL}/api/generate`, {
+    const res = await fetch(backendUrl, {
       method: 'POST',
       body: formData,
     });
@@ -26,7 +42,7 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Generation failed';
     console.error('Generate proxy error:', message);
     return NextResponse.json(
-      { error: `Could not reach the generation backend. Make sure the Python server is running. (${message})` },
+      { error: `Could not reach the generation backend. (${message})` },
       { status: 502 }
     );
   }

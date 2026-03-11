@@ -6,6 +6,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/health", "destination": "/api/index" },
     { "source": "/api/generate", "destination": "/api/index" },
     { "source": "/api/fonts", "destination": "/api/index" },
     { "source": "/api/templates", "destination": "/api/index" },

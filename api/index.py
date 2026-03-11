@@ -1,7 +1,6 @@
 """
 Vercel Python Serverless Function — exposes the handwriting generator
 as serverless API endpoints on Vercel (no separate backend needed).
-
 Locally, use python/dev_server.py instead.
 """
 
@@ -22,6 +21,36 @@ from template_analyzer import analyze_template, analyze_template_from_path, anal
 
 app = Flask(__name__)
 CORS(app)
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Return JSON instead of HTML for any unhandled errors."""
+    import traceback
+    traceback.print_exc()
+    return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    """Diagnostic endpoint to check if the function is running."""
+    import importlib
+    status = {"ok": True}
+    for mod in ["flask", "PIL", "numpy"]:
+        try:
+            importlib.import_module(mod)
+            status[mod] = "ok"
+        except ImportError as e:
+            status[mod] = str(e)
+    try:
+        from generator import FONT_NAMES, BUILTIN_TEMPLATES
+        from pathlib import Path
+        status["fonts"] = len(FONT_NAMES)
+        status["templates"] = {k: str(v) for k, v in BUILTIN_TEMPLATES.items()}
+        status["templates_exist"] = {k: Path(v).exists() for k, v in BUILTIN_TEMPLATES.items()}
+    except Exception as e:
+        status["generator_error"] = str(e)
+    return jsonify(status)
 
 
 @app.route("/api/generate", methods=["POST"])

@@ -18,7 +18,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ScribeAI - Text to Handwritten',
+  title: 'P2P - Text to Handwritten',
   description: 'Convert typed text to realistic handwriting',
 };
 
