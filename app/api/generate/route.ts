@@ -1,29 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Proxy for /api/generate — works in both environments:
- * - Local dev: forwards to Flask dev server at localhost:5328
- * - Vercel: forwards to the Python serverless function at /api/index
- *   (since Next.js routes take priority over vercel.json rewrites)
+ * Proxy: forwards /api/generate to the Python backend.
+ * Set BACKEND_URL env var in Vercel to your deployed backend URL
+ * (e.g. https://your-app.onrender.com). Defaults to localhost for dev.
  */
+const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:5328';
 
 export async function POST(req: NextRequest) {
-  let backendUrl: string;
-
-  if (process.env.VERCEL_URL) {
-    // On Vercel: call the Python serverless function directly
-    const proto = process.env.VERCEL_ENV === 'development' ? 'http' : 'https';
-    backendUrl = `${proto}://${process.env.VERCEL_URL}/api/index`;
-  } else if (process.env.BACKEND_URL) {
-    backendUrl = `${process.env.BACKEND_URL}/api/generate`;
-  } else {
-    backendUrl = 'http://127.0.0.1:5328/api/generate';
-  }
-
   try {
     const formData = await req.formData();
 
-    const res = await fetch(backendUrl, {
+    const res = await fetch(`${BACKEND}/api/generate`, {
       method: 'POST',
       body: formData,
     });

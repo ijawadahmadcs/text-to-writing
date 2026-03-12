@@ -1,16 +1,2 @@
 {
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "python/**/*.py,public/fonts/**/*.ttf,public/templates/**/*.png",
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    { "source": "/api/health", "destination": "/api/index" },
-    { "source": "/api/generate", "destination": "/api/index" },
-    { "source": "/api/fonts", "destination": "/api/index" },
-    { "source": "/api/templates", "destination": "/api/index" },
-    { "source": "/api/analyze", "destination": "/api/index" },
-    { "source": "/api/analyze-template", "destination": "/api/index" }
-  ]
 }
