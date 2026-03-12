@@ -40,7 +40,7 @@ export default function LandingPage() {
               href="/create" 
               className="bg-stone-900 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-lg shadow-stone-200"
             >
-              Get Started
+              Try It Now
             </Link>
             <button 
               className="md:hidden p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
@@ -230,14 +230,14 @@ export default function LandingPage() {
             </div>
             <h2 className="text-2xl sm:text-4xl md:text-6xl font-display font-bold mb-6 sm:mb-8 relative z-10">Stop typing, start <span className="italic text-stone-400">writing</span>.</h2>
             <p className="text-stone-400 text-base sm:text-lg mb-8 sm:mb-12 max-w-xl mx-auto relative z-10">
-              Join thousands of students who are saving hours every week with P2P.
+              Join thousands of students who are saving hours every week with Pixel-to-Pen
             </p>
-            <Link 
+            {/* <Link 
               href="/create" 
               className="inline-flex items-center gap-2 bg-white text-stone-900 px-10 py-5 rounded-2xl text-xl font-bold hover:scale-105 transition-all relative z-10"
             >
               Get Started Now <ArrowRight className="w-6 h-6" />
-            </Link>
+            </Link> */}
           </div>
         </section>
       </main>
@@ -290,7 +290,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 sm:mt-20 pt-8 border-t border-stone-200 text-center text-stone-400 text-xs sm:text-sm">
-          © 2026 P2P. All rights reserved.
+          © 2026 PixeltoPen. All rights reserved.
         </div>
       </footer>
     </div>
