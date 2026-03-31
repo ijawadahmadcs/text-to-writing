@@ -151,18 +151,11 @@ export default function CreateAssignmentPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [inkColor, setInkColor] = useState('#1a1a2e');
   const [fontSize, setFontSize] = useState<number | null>(null); // null = auto
+  const [pendingInkColor, setPendingInkColor] = useState('#1a1a2e');
+  const [pendingFontSize, setPendingFontSize] = useState<number | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [downloadMode, setDownloadMode] = useState<'normal' | 'compressed'>('normal');
   const regenerateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Auto-regenerate when ink color or font size changes during preview
-  useEffect(() => {
-    if (currentStep !== 'preview' || isGenerating || generatedPages.length === 0) return;
-    if (regenerateTimerRef.current) clearTimeout(regenerateTimerRef.current);
-    regenerateTimerRef.current = setTimeout(() => {
-      generateHandwriting();
-    }, 600);
-    return () => { if (regenerateTimerRef.current) clearTimeout(regenerateTimerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inkColor, fontSize]);
 
   // Load fonts (simulated for MVP)
   useEffect(() => {
@@ -171,6 +164,14 @@ export default function CreateAssignmentPage() {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
   }, []);
+
+  // Sync pending values with current values after generation
+  useEffect(() => {
+    if (!hasChanges) {
+      setPendingInkColor(inkColor);
+      setPendingFontSize(fontSize);
+    }
+  }, [inkColor, fontSize, hasChanges]);
 
   const handleNext = () => {
     if (currentStep === 'upload') setCurrentStep('samples');
@@ -189,14 +190,18 @@ export default function CreateAssignmentPage() {
     setErrorMessage(null);
     setCurrentStep('preview');
 
+    // Apply pending changes
+    const colorToUse = hasChanges ? pendingInkColor : inkColor;
+    const sizeToUse = hasChanges ? pendingFontSize : fontSize;
+
     try {
       const isCustom = selectedTemplate.id.startsWith('custom-');
       const formData = new FormData();
       formData.append('text', text);
       formData.append('template', selectedTemplate.id);
       formData.append('fontIndex', String(selectedFont.index));
-      formData.append('inkColor', inkColor);
-      if (fontSize) formData.append('fontSize', String(fontSize));
+      formData.append('inkColor', colorToUse);
+      if (sizeToUse) formData.append('fontSize', String(sizeToUse));
 
       // Tell backend whether to use extracted style or a preset font
       const shouldUseExtracted = samples.length > 0 && useExtractedStyle;
@@ -228,6 +233,13 @@ export default function CreateAssignmentPage() {
       const data = await res.json();
 
       setGeneratedPages(data.pages);
+      
+      // Apply pending changes to current state
+      if (hasChanges) {
+        setInkColor(pendingInkColor);
+        setFontSize(pendingFontSize);
+        setHasChanges(false);
+      }
     } catch (err) {
       console.error('Generation failed:', err);
       const msg = err instanceof Error ? err.message : 'Generation failed. Please try again.';
@@ -249,18 +261,88 @@ export default function CreateAssignmentPage() {
     });
   };
 
-  const downloadPDF = () => {
+  const downloadPDF = (mode: 'normal' | 'compressed' = 'normal') => {
     // Detect dimensions from first generated page
     const img = new window.Image();
     img.src = generatedPages[0];
     const w = img.naturalWidth || 800;
     const h = img.naturalHeight || 1100;
     const pdf = new jsPDF('p', 'px', [w, h]);
-    generatedPages.forEach((page, index) => {
+    
+    let pageIndex = 0;
+    let completedPages = 0;
+    
+    // Helper to add a single page with optional compression
+    const addPageToPDF = (pageData: string, index: number) => {
       if (index > 0) pdf.addPage();
-      pdf.addImage(page, 'PNG', 0, 0, w, h);
-    });
-    pdf.save('assignment.pdf');
+      
+      if (mode === 'compressed') {
+        // Compress by converting to canvas and reducing quality
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        const pageImg = new window.Image();
+        pageImg.onload = () => {
+          // Scale down to reduce file size (80% of original)
+          const scaleFactor = 0.8;
+          canvas.width = pageImg.width * scaleFactor;
+          canvas.height = pageImg.height * scaleFactor;
+          ctx.drawImage(pageImg, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to JPG with compression via canvas
+          const compressedData = canvas.toDataURL('image/jpeg', 0.75);
+          const scaledW = w * scaleFactor;
+          const scaledH = h * scaleFactor;
+          pdf.addImage(compressedData, 'JPEG', 0, 0, scaledW, scaledH);
+          
+          completedPages++;
+          if (completedPages === generatedPages.length) {
+            pdf.save('assignment-compressed.pdf');
+          }
+        };
+        pageImg.src = pageData;
+      } else {
+        // Normal mode - add as PNG directly
+        pdf.addImage(pageData, 'PNG', 0, 0, w, h);
+      }
+    };
+    
+    if (mode === 'compressed') {
+      // For compressed mode, we need to handle async image loading
+      generatedPages.forEach((page, index) => {
+        const pageImg = new window.Image();
+        pageImg.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          
+          const scaleFactor = 0.8;
+          canvas.width = pageImg.width * scaleFactor;
+          canvas.height = pageImg.height * scaleFactor;
+          ctx.drawImage(pageImg, 0, 0, canvas.width, canvas.height);
+          
+          const compressedData = canvas.toDataURL('image/jpeg', 0.75);
+          if (index > 0) pdf.addPage();
+          const scaledW = w * scaleFactor;
+          const scaledH = h * scaleFactor;
+          pdf.addImage(compressedData, 'JPEG', 0, 0, scaledW, scaledH);
+          
+          completedPages++;
+          if (completedPages === generatedPages.length) {
+            pdf.save('assignment-compressed.pdf');
+          }
+        };
+        pageImg.src = page;
+      });
+    } else {
+      // Normal mode - synchronous
+      generatedPages.forEach((page, index) => {
+        if (index > 0) pdf.addPage();
+        pdf.addImage(page, 'PNG', 0, 0, w, h);
+      });
+      pdf.save('assignment.pdf');
+    }
   };
 
   return (
@@ -607,8 +689,42 @@ export default function CreateAssignmentPage() {
                   <div className="space-y-6">
                     <div className="glass p-6 rounded-3xl space-y-6">
                       <h3 className="font-bold">Export Options</h3>
+                      
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold text-stone-600">PDF Format</label>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setDownloadMode('normal')}
+                            className={cn(
+                              "flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all",
+                              downloadMode === 'normal'
+                                ? "bg-stone-900 text-white"
+                                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                            )}
+                          >
+                            Normal
+                          </button>
+                          <button
+                            onClick={() => setDownloadMode('compressed')}
+                            className={cn(
+                              "flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all",
+                              downloadMode === 'compressed'
+                                ? "bg-stone-900 text-white"
+                                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                            )}
+                          >
+                            Compressed
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-400">
+                          {downloadMode === 'compressed' 
+                            ? "Reduced size with optimized image quality" 
+                            : "Full resolution PNG images"}
+                        </p>
+                      </div>
+                      
                       <button 
-                        onClick={downloadPDF}
+                        onClick={() => downloadPDF(downloadMode)}
                         className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
                       >
                         <Download className="w-5 h-5" /> Download PDF
@@ -640,18 +756,24 @@ export default function CreateAssignmentPage() {
                         <div className="flex items-center gap-3">
                           <input
                             type="color"
-                            value={inkColor}
-                            onChange={(e) => setInkColor(e.target.value)}
+                            value={pendingInkColor}
+                            onChange={(e) => {
+                              setPendingInkColor(e.target.value);
+                              setHasChanges(true);
+                            }}
                             className="w-10 h-10 rounded-xl border border-stone-200 cursor-pointer bg-transparent"
                           />
                           <div className="flex gap-1.5">
                             {['#1a1a2e', '#1a237e', '#0d47a1', '#1b5e20', '#4a148c', '#b71c1c'].map(c => (
                               <button
                                 key={c}
-                                onClick={() => setInkColor(c)}
+                                onClick={() => {
+                                  setPendingInkColor(c);
+                                  setHasChanges(true);
+                                }}
                                 className={cn(
                                   "w-7 h-7 rounded-lg border-2 transition-all",
-                                  inkColor === c ? "border-stone-900 scale-110" : "border-transparent hover:scale-105"
+                                  pendingInkColor === c ? "border-stone-900 scale-110" : "border-transparent hover:scale-105"
                                 )}
                                 style={{ backgroundColor: c }}
                               />
@@ -669,21 +791,38 @@ export default function CreateAssignmentPage() {
                             type="range"
                             min={20}
                             max={80}
-                            value={fontSize ?? 42}
-                            onChange={(e) => setFontSize(Number(e.target.value))}
+                            value={pendingFontSize ?? 42}
+                            onChange={(e) => {
+                              setPendingFontSize(Number(e.target.value));
+                              setHasChanges(true);
+                            }}
                             className="flex-1 accent-stone-900"
                           />
-                          <span className="text-xs font-mono w-8 text-center text-stone-500">{fontSize ?? 42}</span>
+                          <span className="text-xs font-mono w-8 text-center text-stone-500">{pendingFontSize ?? 42}</span>
                         </div>
                         <button
-                          onClick={() => setFontSize(null)}
+                          onClick={() => {
+                            setPendingFontSize(null);
+                            setHasChanges(true);
+                          }}
                           className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
                         >
                           Reset to auto
                         </button>
                       </div>
 
-                      <p className="text-xs text-stone-400">Changes auto-apply after a brief delay.</p>
+                      <button
+                        onClick={generateHandwriting}
+                        disabled={!hasChanges}
+                        className={cn(
+                          "w-full py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all",
+                          hasChanges
+                            ? "bg-stone-900 text-white hover:scale-[1.02] active:scale-[0.98]"
+                            : "bg-stone-100 text-stone-400 cursor-not-allowed"
+                        )}
+                      >
+                        <Check className="w-4 h-4" /> Make Changes
+                      </button>
                     </div>
 
                     <div className="p-6 rounded-3xl bg-stone-100 space-y-4">
@@ -692,6 +831,7 @@ export default function CreateAssignmentPage() {
                         <div className="flex justify-between"><span>Pages</span><span>{generatedPages.length}</span></div>
                         <div className="flex justify-between"><span>Template</span><span>{selectedTemplate.name}</span></div>
                         <div className="flex justify-between"><span>Font</span><span>{selectedFont.name}</span></div>
+                        <div className="flex justify-between"><span>Font Size</span><span>{fontSize ?? 'auto'}</span></div>
                         <div className="flex justify-between"><span>Ink</span><span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full inline-block" style={{backgroundColor: inkColor}} />{inkColor}</span></div>
                       </div>
                     </div>
