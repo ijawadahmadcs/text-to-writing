@@ -153,9 +153,10 @@ export default function CreateAssignmentPage() {
   const [fontSize, setFontSize] = useState<number | null>(null); // null = auto
   const [pendingInkColor, setPendingInkColor] = useState('#1a1a2e');
   const [pendingFontSize, setPendingFontSize] = useState<number | null>(null);
+  const [headingBold, setHeadingBold] = useState(true);
+  const [pendingHeadingBold, setPendingHeadingBold] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [downloadMode, setDownloadMode] = useState<'normal' | 'compressed'>('normal');
-  const regenerateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load fonts (simulated for MVP)
   useEffect(() => {
@@ -170,8 +171,9 @@ export default function CreateAssignmentPage() {
     if (!hasChanges) {
       setPendingInkColor(inkColor);
       setPendingFontSize(fontSize);
+      setPendingHeadingBold(headingBold);
     }
-  }, [inkColor, fontSize, hasChanges]);
+  }, [inkColor, fontSize, headingBold, hasChanges]);
 
   const handleNext = () => {
     if (currentStep === 'upload') setCurrentStep('samples');
@@ -193,6 +195,7 @@ export default function CreateAssignmentPage() {
     // Apply pending changes
     const colorToUse = hasChanges ? pendingInkColor : inkColor;
     const sizeToUse = hasChanges ? pendingFontSize : fontSize;
+    const headingBoldToUse = hasChanges ? pendingHeadingBold : headingBold;
 
     try {
       const isCustom = selectedTemplate.id.startsWith('custom-');
@@ -202,6 +205,7 @@ export default function CreateAssignmentPage() {
       formData.append('fontIndex', String(selectedFont.index));
       formData.append('inkColor', colorToUse);
       if (sizeToUse) formData.append('fontSize', String(sizeToUse));
+      formData.append('headingBold', headingBoldToUse ? '1' : '0');
 
       // Tell backend whether to use extracted style or a preset font
       const shouldUseExtracted = samples.length > 0 && useExtractedStyle;
@@ -238,6 +242,7 @@ export default function CreateAssignmentPage() {
       if (hasChanges) {
         setInkColor(pendingInkColor);
         setFontSize(pendingFontSize);
+        setHeadingBold(pendingHeadingBold);
         setHasChanges(false);
       }
     } catch (err) {
@@ -370,9 +375,9 @@ export default function CreateAssignmentPage() {
           ))}
         </div>
 
-        <button className="text-stone-400 hover:text-stone-900 transition-colors">
+       <Link href='/'> <button className="text-stone-400 hover:text-stone-900 transition-colors">
           <X className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
+        </button></Link>
       </header>
 
       <main className="flex-grow p-4 sm:p-6 md:p-12 max-w-5xl mx-auto w-full">
@@ -811,6 +816,27 @@ export default function CreateAssignmentPage() {
                         </button>
                       </div>
 
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-stone-600">Heading Style</label>
+                        <button
+                          onClick={() => {
+                            setPendingHeadingBold(v => !v);
+                            setHasChanges(true);
+                          }}
+                          className={cn(
+                            "w-full py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all",
+                            pendingHeadingBold
+                              ? "bg-stone-900 text-white border-stone-900"
+                              : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                          )}
+                        >
+                          {pendingHeadingBold ? 'Bold headings: On' : 'Bold headings: Off'}
+                        </button>
+                        <p className="text-xs text-stone-400">
+                          Headings are auto-detected from lines like # Title, INTRODUCTION, or lines ending with :
+                        </p>
+                      </div>
+
                       <button
                         onClick={generateHandwriting}
                         disabled={!hasChanges}
@@ -832,6 +858,7 @@ export default function CreateAssignmentPage() {
                         <div className="flex justify-between"><span>Template</span><span>{selectedTemplate.name}</span></div>
                         <div className="flex justify-between"><span>Font</span><span>{selectedFont.name}</span></div>
                         <div className="flex justify-between"><span>Font Size</span><span>{fontSize ?? 'auto'}</span></div>
+                        <div className="flex justify-between"><span>Bold Headings</span><span>{headingBold ? 'On' : 'Off'}</span></div>
                         <div className="flex justify-between"><span>Ink</span><span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full inline-block" style={{backgroundColor: inkColor}} />{inkColor}</span></div>
                       </div>
                     </div>

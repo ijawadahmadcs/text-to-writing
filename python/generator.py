@@ -148,6 +148,12 @@ def parse_text_structure(text: str) -> list[dict]:
         stripped = line.strip()
         if not stripped:
             blocks.append({'type': 'blank', 'content': ''})
+        elif stripped.startswith('#'):
+            heading_text = stripped.lstrip('#').strip()
+            if heading_text:
+                blocks.append({'type': 'heading', 'content': heading_text})
+            else:
+                blocks.append({'type': 'blank', 'content': ''})
         elif len(stripped) >= 2 and stripped[0].isdigit() and stripped[1] in '.):' :
             blocks.append({'type': 'list_item', 'content': stripped})
         elif len(stripped) < 60 and stripped.endswith(':'):
@@ -410,6 +416,7 @@ def generate_pages(
     margin_right_pct: float = 0.06,
     margin_top_pct: float = 0.09,
     margin_bottom_pct: float = 0.05,
+    enable_heading_bold: bool = True,
     custom_template_bytes: bytes | None = None,
     style_profile: dict[str, Any] | None = None,
 ) -> list[bytes]:
@@ -419,6 +426,8 @@ def generate_pages(
     margins, and writing areas so text is placed properly on the paper.
     When *style_profile* is provided the renderer adapts ink colour, size,
     spacing, jitter and slant to mimic the analysed handwriting.
+    When *enable_heading_bold* is True, detected headings are rendered thicker
+    than normal body text.
     """
 
     profile = style_profile or default_profile()
@@ -528,6 +537,7 @@ def generate_pages(
                 y_jitter_std, x_jitter_std, rot_jitter_std,
                 slant_rad, pressure_var, size_jitter,
                 char_spacing_mul, connectivity,
+                bold_strength=3 if (enable_heading_bold and btype == 'heading') else 0,
             )
 
         # Add ink artifacts for realism
@@ -602,6 +612,7 @@ def _draw_word_natural(
     size_jitter: float,
     char_spacing_mul: float,
     connectivity: float = 0.0,
+    bold_strength: int = 0,
 ):
     """
     Render a word character-by-character with independent per-character
@@ -632,6 +643,16 @@ def _draw_word_natural(
 
         _draw_char(img, char, font, current_fill,
                    char_x + dx, y + dy, angle)
+
+        if bold_strength > 0:
+            # Synthetic bold: tiny extra strokes around the same glyph.
+            _draw_char(img, char, font, current_fill,
+                       char_x + dx + 0.35, y + dy, angle)
+            _draw_char(img, char, font, current_fill,
+                       char_x + dx, y + dy + 0.25, angle)
+            if bold_strength > 2:
+                _draw_char(img, char, font, current_fill,
+                           char_x + dx + 0.25, y + dy + 0.2, angle)
 
         bbox = font.getbbox(char)
         char_width = (bbox[2] - bbox[0]) * char_spacing_mul

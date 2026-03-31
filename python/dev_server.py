@@ -49,6 +49,7 @@ def api_generate():
         font_size = request.form.get("fontSize")
         line_spacing = request.form.get("lineSpacing")
         ink_color = request.form.get("inkColor", "#1a1a2e")
+        heading_bold = request.form.get("headingBold", "1") == "1"
         use_extracted = request.form.get("useExtractedStyle", "0") == "1"
 
         custom_file = request.files.get("customTemplate")
@@ -66,6 +67,7 @@ def api_generate():
         font_size = data.get("fontSize")
         line_spacing = data.get("lineSpacing")
         ink_color = data.get("inkColor", "#1a1a2e")
+        heading_bold = bool(data.get("headingBold", True))
         use_extracted = bool(data.get("useExtractedStyle", False))
         custom_bytes = None
 
@@ -96,6 +98,7 @@ def api_generate():
         font_size=font_size,
         line_spacing=line_spacing,
         ink_color=ink_color,
+        enable_heading_bold=heading_bold,
         custom_template_bytes=custom_bytes,
         style_profile=profile,
     )
