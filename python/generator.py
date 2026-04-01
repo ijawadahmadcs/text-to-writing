@@ -412,6 +412,7 @@ def generate_pages(
     font_size: int | None = None,
     line_spacing: int | None = None,
     ink_color: str = "#1a1a2e",
+    heading_color: str | None = None,
     margin_left_pct: float = 0.12,
     margin_right_pct: float = 0.06,
     margin_top_pct: float = 0.09,
@@ -426,6 +427,7 @@ def generate_pages(
     margins, and writing areas so text is placed properly on the paper.
     When *style_profile* is provided the renderer adapts ink colour, size,
     spacing, jitter and slant to mimic the analysed handwriting.
+    *heading_color* allows using a dedicated heading ink color.
     When *enable_heading_bold* is True, detected headings are rendered thicker
     than normal body text.
     """
@@ -496,6 +498,9 @@ def generate_pages(
         fill_color = ink_color
         ink_rgb = _hex_to_rgb(ink_color)
 
+    heading_fill_color = heading_color or fill_color
+    heading_ink_rgb = _hex_to_rgb(heading_fill_color)
+
     slant_rad = math.radians(profile.get("slant_deg", 0.0))
     y_jitter_std = profile.get("baseline_jitter", 0.5) * scale
     x_jitter_std = profile.get("x_jitter", 0.3) * scale
@@ -531,13 +536,14 @@ def generate_pages(
         pressure_interval = random.randint(3, 8)
 
         for word, wx, wy, btype, active_font in placements:
+            active_ink = heading_ink_rgb if btype == 'heading' else ink_rgb
             # Per-character rendering for natural look
             _draw_word_natural(
-                page, word, active_font, ink_rgb, wx, wy,
+                page, word, active_font, active_ink, wx, wy,
                 y_jitter_std, x_jitter_std, rot_jitter_std,
                 slant_rad, pressure_var, size_jitter,
                 char_spacing_mul, connectivity,
-                bold_strength=3 if (enable_heading_bold and btype == 'heading') else 0,
+                bold_strength=5 if (enable_heading_bold and btype == 'heading') else 0,
             )
 
         # Add ink artifacts for realism
@@ -645,14 +651,17 @@ def _draw_word_natural(
                    char_x + dx, y + dy, angle)
 
         if bold_strength > 0:
-            # Synthetic bold: tiny extra strokes around the same glyph.
-            _draw_char(img, char, font, current_fill,
-                       char_x + dx + 0.35, y + dy, angle)
-            _draw_char(img, char, font, current_fill,
-                       char_x + dx, y + dy + 0.25, angle)
-            if bold_strength > 2:
+            # Synthetic bold for marker-like thickness on headings.
+            offsets = [
+                (0.4, 0.0),
+                (0.0, 0.35),
+                (0.3, 0.25),
+                (-0.25, 0.2),
+                (0.2, -0.2),
+            ]
+            for ox, oy in offsets[:bold_strength]:
                 _draw_char(img, char, font, current_fill,
-                           char_x + dx + 0.25, y + dy + 0.2, angle)
+                           char_x + dx + ox, y + dy + oy, angle)
 
         bbox = font.getbbox(char)
         char_width = (bbox[2] - bbox[0]) * char_spacing_mul

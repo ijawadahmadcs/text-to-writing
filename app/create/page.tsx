@@ -150,8 +150,10 @@ export default function CreateAssignmentPage() {
   const [zoom, setZoom] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [inkColor, setInkColor] = useState('#1a1a2e');
+  const [headingColor, setHeadingColor] = useState('#1a1a2e');
   const [fontSize, setFontSize] = useState<number | null>(null); // null = auto
   const [pendingInkColor, setPendingInkColor] = useState('#1a1a2e');
+  const [pendingHeadingColor, setPendingHeadingColor] = useState('#1a1a2e');
   const [pendingFontSize, setPendingFontSize] = useState<number | null>(null);
   const [headingBold, setHeadingBold] = useState(true);
   const [pendingHeadingBold, setPendingHeadingBold] = useState(true);
@@ -170,10 +172,11 @@ export default function CreateAssignmentPage() {
   useEffect(() => {
     if (!hasChanges) {
       setPendingInkColor(inkColor);
+      setPendingHeadingColor(headingColor);
       setPendingFontSize(fontSize);
       setPendingHeadingBold(headingBold);
     }
-  }, [inkColor, fontSize, headingBold, hasChanges]);
+  }, [inkColor, headingColor, fontSize, headingBold, hasChanges]);
 
   const handleNext = () => {
     if (currentStep === 'upload') setCurrentStep('samples');
@@ -194,6 +197,7 @@ export default function CreateAssignmentPage() {
 
     // Apply pending changes
     const colorToUse = hasChanges ? pendingInkColor : inkColor;
+    const headingColorToUse = hasChanges ? pendingHeadingColor : headingColor;
     const sizeToUse = hasChanges ? pendingFontSize : fontSize;
     const headingBoldToUse = hasChanges ? pendingHeadingBold : headingBold;
 
@@ -204,6 +208,7 @@ export default function CreateAssignmentPage() {
       formData.append('template', selectedTemplate.id);
       formData.append('fontIndex', String(selectedFont.index));
       formData.append('inkColor', colorToUse);
+      formData.append('headingColor', headingColorToUse);
       if (sizeToUse) formData.append('fontSize', String(sizeToUse));
       formData.append('headingBold', headingBoldToUse ? '1' : '0');
 
@@ -241,6 +246,7 @@ export default function CreateAssignmentPage() {
       // Apply pending changes to current state
       if (hasChanges) {
         setInkColor(pendingInkColor);
+        setHeadingColor(pendingHeadingColor);
         setFontSize(pendingFontSize);
         setHeadingBold(pendingHeadingBold);
         setHasChanges(false);
@@ -789,6 +795,39 @@ export default function CreateAssignmentPage() {
 
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-stone-600 flex items-center gap-2">
+                          <Palette className="w-3.5 h-3.5" /> Heading Color
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={pendingHeadingColor}
+                            onChange={(e) => {
+                              setPendingHeadingColor(e.target.value);
+                              setHasChanges(true);
+                            }}
+                            className="w-10 h-10 rounded-xl border border-stone-200 cursor-pointer bg-transparent"
+                          />
+                          <div className="flex gap-1.5">
+                            {['#1a1a2e', '#263238', '#3e2723', '#4e342e', '#b71c1c', '#004d40'].map(c => (
+                              <button
+                                key={c}
+                                onClick={() => {
+                                  setPendingHeadingColor(c);
+                                  setHasChanges(true);
+                                }}
+                                className={cn(
+                                  "w-7 h-7 rounded-lg border-2 transition-all",
+                                  pendingHeadingColor === c ? "border-stone-900 scale-110" : "border-transparent hover:scale-105"
+                                )}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-stone-600 flex items-center gap-2">
                           <Type className="w-3.5 h-3.5" /> Font Size
                         </label>
                         <div className="flex items-center gap-3">
@@ -859,6 +898,7 @@ export default function CreateAssignmentPage() {
                         <div className="flex justify-between"><span>Font</span><span>{selectedFont.name}</span></div>
                         <div className="flex justify-between"><span>Font Size</span><span>{fontSize ?? 'auto'}</span></div>
                         <div className="flex justify-between"><span>Bold Headings</span><span>{headingBold ? 'On' : 'Off'}</span></div>
+                        <div className="flex justify-between"><span>Heading Color</span><span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full inline-block" style={{backgroundColor: headingColor}} />{headingColor}</span></div>
                         <div className="flex justify-between"><span>Ink</span><span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full inline-block" style={{backgroundColor: inkColor}} />{inkColor}</span></div>
                       </div>
                     </div>
